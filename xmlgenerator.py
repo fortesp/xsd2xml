@@ -4,7 +4,7 @@ import datetime
 import xmlschema
 
 from element import Element
-from datagenerator import DataGenerator
+from util.datagenerator import DataGenerator
 
 
 class DataFacet:
