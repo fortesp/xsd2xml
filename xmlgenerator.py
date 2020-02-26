@@ -2,17 +2,18 @@ import random
 import rstr
 import datetime
 import xmlschema
+import xml.etree.cElementTree as ET
 
-from element import Element
 from util.datagenerator import DataGenerator
-
 
 class DataFacet:
 
     def __init__(self):
         self.datagenerator = DataGenerator()
 
-    def string(self, nodetype):
+    def string(self, node, nodetype):
+
+        content = ""
 
         _facets_str = str(nodetype.facets)
         if "Length" in _facets_str:
@@ -34,112 +35,124 @@ class DataFacet:
 
         return content
 
-    def boolean(self, nodetype):
+    def boolean(self, node, nodetype):
         return True if (random.randrange(0, 1) == 1) else False
 
-    def datetime(self, nodetype):
+    def datetime(self, node, nodetype):
         return datetime.datetime.now().isoformat()
 
-    def date(self, nodetype):
-        return self.datetime(nodetype).split('T')[0]
+    def date(self, node, nodetype):
+        return self.datetime(node, nodetype).split('T')[0]
 
-    def time(self, nodetype):
-        return self.datetime(nodetype).split('T')[1]
+    def time(self, node, nodetype):
+        return self.datetime(node, nodetype).split('T')[1]
 
-    def integer(self, nodetype):   # todo - complete this part
+    def integer(self, node, nodetype):  # todo - complete this part
         return random.randrange(0, 10000)
 
-    def decimal(self, nodetype):
-        digit_size, fraction_size = 0, 0
-        for k, facet in nodetype.facets.items():
-            if "fractionDigits" in k:
-                fraction_size = facet.value
-            elif "totalDigits" in k:
-                digit_size = facet.value
+    def float(self, node, nodetype):  # todo - complete this part
+        return random.randrange(0, 1.0)
 
-        if digit_size > 0:
-            _content_part_1 = self.datagenerator.get_digits(random.randrange(1, digit_size))
-        else:
-            _content_part_1 = "0"
+    def byte(self, node, nodetype):  # todo - complete this part
+        return random.randrange(0, 8)
+
+    def decimal(self, node, nodetype):
+        digit_size, fraction_size = 0, 0
+        # print(nodetype.facets)
+        for k, facet in nodetype.facets.items():
+            if not k is None:
+                if "fractionDigits" in k:
+                    fraction_size = facet.value
+                elif "totalDigits" in k:
+                    digit_size = facet.value
+        # elif "assertion" in k:
+        #    assertion = facet.path
 
         if fraction_size > 0:
             _content_part_2 = self.datagenerator.get_digits(random.randrange(1, fraction_size))
         else:
             _content_part_2 = "0"
 
+        if digit_size > 0:
+            if digit_size - fraction_size == 1:
+                _content_part_1 = self.datagenerator.get_digits(random.randrange(1, 2))
+            else:
+                _content_part_1 = self.datagenerator.get_digits(random.randrange(1, digit_size - fraction_size))
+        else:
+            _content_part_1 = "0"
+
         return _content_part_1 + "." + _content_part_2
 
-    def get_content(self, nodetype):
+    def get_content(self, node, nodetype):
 
-        content = ""
         datatype = nodetype.primitive_type.local_name.lower()
+        method = getattr(self, datatype)
 
-        f = getattr(self, datatype)
-
-        return f(nodetype)
+        return method(node, nodetype)
 
 
 class XMLGenerator:
 
-    def __init__(self, schema_file, mandatory_only=False, data_facet=None):
+    def __init__(self, schema_file, mandatory_only=False, datafacet=None):
         self.schema = xmlschema.XMLSchema(schema_file)
         self.mandatory_only = mandatory_only
         self.datagenerator = DataGenerator()
-        self.data_facet = data_facet
-        # self.prettify = prettify
+        self.datafacet = datafacet
+        self.root = None
 
     def execute(self):
-        # meta
-        xml_str = str(Element("xml", {"version": "1.0", "encoding": "UTF-8"}, True))
-        # if self.prettify: xml_str += "\n"
 
-        # xml
         for k, node in self.schema.elements.items():
             if self.mandatory_only and node.occurs[0] < 1: continue
-            xml_str += self._recur_build(node, True)
+            self.root = ET.Element(node.local_name, xmlns=self.schema.target_namespace)
+            self._recur_build(node, self.root, True)
 
-        return xml_str
+        return ET.tostring(self.root)
 
-    def _get_content(self, nodetype):
-        if self.data_facet:
-            return self.data_facet.get_content(nodetype)
+    def write(self, filename):
+
+        if self.root is None: return
+
+        tree = ET.ElementTree(self.root)
+        tree.write(filename, "utf-8", True)
+
+    # get generated content
+    def _get_content(self, xsdnode, nodetype):
+        if self.datafacet:
+            return str(self.datafacet.get_content(xsdnode, nodetype))
         else:
             return ""
 
+    def _recur_build(self, xsdnode, xmlnode, isroot=False):
 
-    def _recur_build(self, node, root=False):
+        if self.mandatory_only and xsdnode.occurs[0] < 1: return
 
-        if self.mandatory_only and node.occurs[0] < 1: return ""
-
-        element = Element(node.local_name, {}, False, True)
-
-        if root and self.schema.target_namespace:
-            element.attributes['xmlns'] = self.schema.target_namespace
+        if not isroot:
+            xmlnode = ET.SubElement(xmlnode, xsdnode.local_name)
 
         # simple content
-        if node.type.has_simple_content():
-            if node.type.is_simple():
-                element.content = self._get_content(node.type)
+        if xsdnode.type.has_simple_content():
+            if xsdnode.type.is_simple():
+                xmlnode.text = self._get_content(xsdnode, xsdnode.type)
             else:
-                element.content = self._get_content(node.type.content_type)
+                xmlnode.text = self._get_content(xsdnode, xsdnode.type.content_type)
 
                 # attributes
-                if node.type.attributes:
-                    for attr, attr_obj in node.type.attributes._attribute_group.items():
-                        element.attributes[attr] = self._get_content(attr_obj.type)
+                if xsdnode.type.attributes:
+                    for attr, attr_obj in xsdnode.type.attributes._attribute_group.items():
+                        xmlnode.attrib[attr] = self._get_content(xsdnode, attr_obj.type)
 
         # complex types
         else:
-            content_type = node.type.content_type
+            content_type = xsdnode.type.content_type
             # choice
             if content_type.model == "choice":
                 subnode = content_type._group[0]
-                element.content += self._recur_build(subnode)
-            # sequence
+                self._recur_build(subnode, xmlnode)
             else:
+                # sequence
                 for subnode in content_type._group:
                     if not hasattr(subnode, 'process_contents'):  # EXCEPT ANY, e.g. lax, etc.
-                        element.content += self._recur_build(subnode)
-
-        # _new_line = "\n" if self.prettify else ""
-        return str(element)
+                        if hasattr(subnode, '_group'):
+                            subnode = subnode._group[0]
+                        self._recur_build(subnode, xmlnode)
