@@ -4,7 +4,8 @@ import datetime
 import xmlschema
 import xml.etree.cElementTree as ET
 
-from util.datagenerator import DataGenerator
+from lib.xsd2xml.util.datagenerator import DataGenerator
+
 
 class DataFacet:
 
@@ -65,11 +66,11 @@ class DataFacet:
                     fraction_size = facet.value
                 elif "totalDigits" in k:
                     digit_size = facet.value
-        # elif "assertion" in k:
+        # elif "assertion" in k:            #for xsd 1.1
         #    assertion = facet.path
 
         if fraction_size > 0:
-            _content_part_2 = self.datagenerator.get_digits(random.randrange(1, fraction_size))
+            _content_part_2 = self.datagenerator.get_digits(2)
         else:
             _content_part_2 = "0"
 
@@ -98,6 +99,7 @@ class XMLGenerator:
         self.mandatory_only = mandatory_only
         self.datagenerator = DataGenerator()
         self.datafacet = datafacet
+        self.ET = ET
         self.root = None
 
     def execute(self):
@@ -111,10 +113,11 @@ class XMLGenerator:
 
     def write(self, filename):
 
-        if self.root is None: return
+        if self.root is None:
+            return
 
         tree = ET.ElementTree(self.root)
-        tree.write(filename, "utf-8", True)
+        tree.write(filename, encoding="utf-8", xml_declaration=True)
 
     # get generated content
     def _get_content(self, xsdnode, nodetype):
@@ -147,12 +150,19 @@ class XMLGenerator:
             content_type = xsdnode.type.content_type
             # choice
             if content_type.model == "choice":
-                subnode = content_type._group[0]
+
+                # find mandatory element in group
+                if self.mandatory_only:
+                    for subnode in content_type._group:
+                        if subnode.occurs[0] < 1: continue
+                else:
+                    subnode = content_type._group[0]
+
                 self._recur_build(subnode, xmlnode)
             else:
                 # sequence
                 for subnode in content_type._group:
-                    if not hasattr(subnode, 'process_contents'):  # EXCEPT ANY, e.g. lax, etc.
+                    if not hasattr(subnode, 'process_contents'):  # EXCEPT ANY, e.g. lax, etc. maybe todo
                         if hasattr(subnode, '_group'):
                             subnode = subnode._group[0]
                         self._recur_build(subnode, xmlnode)
