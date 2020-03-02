@@ -2,9 +2,9 @@ import random
 import rstr
 import datetime
 import xmlschema
-import xml.etree.cElementTree as ET
+import xml.etree.ElementTree as ET
 
-from lib.xsd2xml.util.datagenerator import DataGenerator
+from util.datagenerator import DataGenerator
 
 
 class DataFacet:
@@ -151,14 +151,17 @@ class XMLGenerator:
             # choice
             if content_type.model == "choice":
 
+                selected_node = content_type._group[0]
+
                 # find mandatory element in group
                 if self.mandatory_only:
                     for subnode in content_type._group:
-                        if subnode.occurs[0] < 1: continue
-                else:
-                    subnode = content_type._group[0]
-
-                self._recur_build(subnode, xmlnode)
+                        if subnode.occurs[0] < 1:
+                            continue
+                        else:
+                            selected_node = subnode
+       
+                self._recur_build(selected_node, xmlnode)
             else:
                 # sequence
                 for subnode in content_type._group:
