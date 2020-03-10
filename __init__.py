@@ -1,7 +1,7 @@
-from xmlgenerator import XMLGenerator, DataFacet
+from .xmlgenerator import XMLGenerator, DataFacet
 
 if __name__ == "__main__":
 
-    xmlgenerator = XMLGenerator('resources/pain.001.001.09.xsd', None, DataFacet())
+    xmlgenerator = XMLGenerator('../swift/resources/schema/pain.001.001.09.alt.xsd', None, DataFacet())
     print(xmlgenerator.execute())
 

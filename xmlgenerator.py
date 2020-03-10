@@ -4,7 +4,7 @@ import datetime
 import xmlschema
 import xml.etree.ElementTree as ET
 
-from util.datagenerator import DataGenerator
+from lib.xsd2xml.util.datagenerator import DataGenerator
 
 
 class DataFacet:
@@ -14,7 +14,7 @@ class DataFacet:
 
     def string(self, node, nodetype):
 
-        content = ""
+        content = self.datagenerator.get_mixed_string(10)
 
         _facets_str = str(nodetype.facets)
         if "Length" in _facets_str:
@@ -103,8 +103,7 @@ class XMLGenerator:
         self.root = None
 
     def execute(self):
-
-        for k, node in self.schema.elements.items():
+        for node in self.schema.root_elements:
             if self.mandatory_only and node.occurs[0] < 1: continue
             self.root = ET.Element(node.local_name, xmlns=self.schema.target_namespace)
             self._recur_build(node, self.root, True)
@@ -140,11 +139,6 @@ class XMLGenerator:
             else:
                 xmlnode.text = self._get_content(xsdnode, xsdnode.type.content_type)
 
-                # attributes
-                if xsdnode.type.attributes:
-                    for attr, attr_obj in xsdnode.type.attributes._attribute_group.items():
-                        xmlnode.attrib[attr] = self._get_content(xsdnode, attr_obj.type)
-
         # complex types
         else:
             content_type = xsdnode.type.content_type
@@ -160,7 +154,7 @@ class XMLGenerator:
                             continue
                         else:
                             selected_node = subnode
-       
+
                 self._recur_build(selected_node, xmlnode)
             else:
                 # sequence
@@ -169,3 +163,13 @@ class XMLGenerator:
                         if hasattr(subnode, '_group'):
                             subnode = subnode._group[0]
                         self._recur_build(subnode, xmlnode)
+
+        # attributes
+        _attributes = dict
+        if hasattr(xsdnode, "attributes"):
+            _attributes = xsdnode.attributes
+        else:
+            if hasattr(xsdnode.type, "attributes"):
+                attributes = xsdnode.type.attributes
+        for attr, attr_obj in _attributes.items():
+            xmlnode.attrib[attr] = self._get_content(xsdnode, attr_obj.type)
