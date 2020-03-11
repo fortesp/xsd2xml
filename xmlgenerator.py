@@ -1,104 +1,13 @@
-import random
-import rstr
-import datetime
 import xmlschema
 import xml.etree.ElementTree as ET
-
-from lib.xsd2xml.util.datagenerator import DataGenerator
-
-
-class DataFacet:
-
-    def __init__(self):
-        self.datagenerator = DataGenerator()
-
-    def string(self, node, nodetype):
-
-        content = self.datagenerator.get_mixed_string(10)
-
-        _facets_str = str(nodetype.facets)
-        if "Length" in _facets_str:
-            lo, up = 0, 0
-            for k, facet in nodetype.facets.items():
-                if "minLength" in k:
-                    lo = facet.value
-                elif "maxLength" in k:
-                    up = facet.value
-            content = self.datagenerator.get_mixed_string(random.randrange(lo, up))
-
-        if "enumeration" in _facets_str:
-            enumeration = list(nodetype.facets.values())[0].enumeration
-            content = enumeration[random.randrange(0, len(enumeration))]
-
-        if "pattern" in _facets_str:
-            regexps = list(nodetype.facets.values())[0].regexps
-            content = rstr.xeger(regexps[0]).upper()
-
-        return content
-
-    def boolean(self, node, nodetype):
-        return True if (random.randrange(0, 1) == 1) else False
-
-    def datetime(self, node, nodetype):
-        return datetime.datetime.now().isoformat()
-
-    def date(self, node, nodetype):
-        return self.datetime(node, nodetype).split('T')[0]
-
-    def time(self, node, nodetype):
-        return self.datetime(node, nodetype).split('T')[1]
-
-    def integer(self, node, nodetype):  # todo - complete this part
-        return random.randrange(0, 10000)
-
-    def float(self, node, nodetype):  # todo - complete this part
-        return random.randrange(0, 1.0)
-
-    def byte(self, node, nodetype):  # todo - complete this part
-        return random.randrange(0, 8)
-
-    def decimal(self, node, nodetype):
-        digit_size, fraction_size = 0, 0
-        # print(nodetype.facets)
-        for k, facet in nodetype.facets.items():
-            if not k is None:
-                if "fractionDigits" in k:
-                    fraction_size = facet.value
-                elif "totalDigits" in k:
-                    digit_size = facet.value
-        # elif "assertion" in k:            #for xsd 1.1
-        #    assertion = facet.path
-
-        if fraction_size > 0:
-            _content_part_2 = self.datagenerator.get_digits(2)
-        else:
-            _content_part_2 = "0"
-
-        if digit_size > 0:
-            if digit_size - fraction_size == 1:
-                _content_part_1 = self.datagenerator.get_digits(random.randrange(1, 2))
-            else:
-                _content_part_1 = self.datagenerator.get_digits(random.randrange(1, digit_size - fraction_size))
-        else:
-            _content_part_1 = "0"
-
-        return _content_part_1 + "." + _content_part_2
-
-    def get_content(self, node, nodetype):
-
-        datatype = nodetype.primitive_type.local_name.lower()
-        method = getattr(self, datatype)
-
-        return method(node, nodetype)
 
 
 class XMLGenerator:
 
-    def __init__(self, schema_file, mandatory_only=False, datafacet=None):
+    def __init__(self, schema_file, mandatory_only=False, xmldatatypemock=None):
         self.schema = xmlschema.XMLSchema(schema_file)
         self.mandatory_only = mandatory_only
-        self.datagenerator = DataGenerator()
-        self.datafacet = datafacet
+        self.xmldatatypemock = xmldatatypemock
         self.ET = ET
         self.root = None
 
@@ -118,10 +27,11 @@ class XMLGenerator:
         tree = ET.ElementTree(self.root)
         tree.write(filename, encoding="utf-8", xml_declaration=True)
 
-    # get generated content
-    def _get_content(self, xsdnode, nodetype):
-        if self.datafacet:
-            return str(self.datafacet.get_content(xsdnode, nodetype))
+    def _get_mocked_content(self, nodetype):
+        if self.xmldatatypemock:
+            datatype = nodetype.primitive_type.local_name.lower()
+            method = getattr(self.xmldatatypemock, datatype)
+            return str(method(nodetype))
         else:
             return ""
 
@@ -135,9 +45,9 @@ class XMLGenerator:
         # simple content
         if xsdnode.type.has_simple_content():
             if xsdnode.type.is_simple():
-                xmlnode.text = self._get_content(xsdnode, xsdnode.type)
+                xmlnode.text = self._get_mocked_content(xsdnode.type)
             else:
-                xmlnode.text = self._get_content(xsdnode, xsdnode.type.content_type)
+                xmlnode.text = self._get_mocked_content(xsdnode.type.content_type)
 
         # complex types
         else:
@@ -172,4 +82,4 @@ class XMLGenerator:
             if hasattr(xsdnode.type, "attributes"):
                 attributes = xsdnode.type.attributes
         for attr, attr_obj in _attributes.items():
-            xmlnode.attrib[attr] = self._get_content(xsdnode, attr_obj.type)
+            xmlnode.attrib[attr] = self._get_mocked_content(attr_obj.type)
