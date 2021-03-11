@@ -8,7 +8,7 @@
 
 ### Usage:
 ```
-xmlgenerator = XMLGenerator('resources/pain.001.001.09.xsd', True, DataFacet())
+xmlgenerator = XmlGenerator('pain.001.001.09.xsd', True)
 print(xmlgenerator.execute()) # Output to console
 xmlgenerator.write('filename.xml') # Output to file
 ```

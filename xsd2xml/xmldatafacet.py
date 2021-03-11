@@ -1,18 +1,59 @@
+#  XSD2XML  v0.1
+#  Copyright (c) 2020 - https://github.com/fortesp/xsd2xml
+#  This software is distributed under the terms of the MIT License.
+#  See the file 'LICENSE' in the root directory of the present distribution,
+#  or http://opensource.org/licenses/MIT.
 import datetime
 import random
 import rstr
 
-from lib.xsd2xml.helper import get_mixed_string, get_digits
+from xsd2xml.helper import get_mixed_string, get_digits
+from abc import ABC, abstractmethod
 
 
-class XmlDataTypeMock:
-
-    def __init__(self):
+class DataFacet(ABC):
+    @abstractmethod
+    def string(self, nodetype):
         pass
 
-    def string(self, nodetype):
+    @abstractmethod
+    def boolean(self, nodetype):
+        pass
 
-        content = get_mixed_string(10)
+    @abstractmethod
+    def datetime(self, nodetype):
+        pass
+
+    @abstractmethod
+    def date(self, nodetype):
+        pass
+
+    @abstractmethod
+    def time(self, nodetype):
+        pass
+
+    @abstractmethod
+    def integer(self, nodetype):
+        pass
+
+    @abstractmethod
+    def float(self, nodetype):
+        pass
+
+    @abstractmethod
+    def byte(self, nodetype):
+        pass
+
+    @abstractmethod
+    def decimal(self, nodetype):
+        pass
+
+
+# Class used by the XmlGenerator
+# For each data type it outputs specific randomized data
+class XmlDefaultDataFacet(DataFacet):
+
+    def string(self, nodetype):
 
         _facets_str = str(nodetype.facets)
         if "Length" in _facets_str:
@@ -22,20 +63,22 @@ class XmlDataTypeMock:
                     lo = facet.value
                 elif "maxLength" in k:
                     up = facet.value
-            content = get_mixed_string(random.randrange(lo, up))
+
+            s = get_mixed_string(random.randrange(lo, up))
+            return s
 
         if "enumeration" in _facets_str:
             enumeration = list(nodetype.facets.values())[0].enumeration
-            content = enumeration[random.randrange(0, len(enumeration))]
+            return enumeration[random.randrange(0, len(enumeration))]
 
         if "pattern" in _facets_str:
             regexps = list(nodetype.facets.values())[0].regexps
-            content = rstr.xeger(regexps[0]).upper()
+            return rstr.xeger(regexps[0])
 
-        return content
+        return get_mixed_string(10)
 
-    def boolean(self, nodetype):
-        return True if (random.randrange(0, 1) == 1) else False
+    def boolean(self, nodetype) -> int:
+        return random.randrange(0, 1)  # true / false
 
     def datetime(self, nodetype):
         return datetime.datetime.now().isoformat()
