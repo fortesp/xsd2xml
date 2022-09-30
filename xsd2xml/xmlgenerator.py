@@ -99,8 +99,8 @@ class XmlGenerator:
 
     def _get_random_content(self, nodetype) -> str:
         if self.xmldatafacet:
-            datatype = nodetype.primitive_type.local_name.lower()
-            call_method = getattr(self.xmldatafacet, datatype)
-            return str(call_method(nodetype))
-        else:
-            return ""
+            if hasattr(nodetype, 'primitive_type'):
+                datatype = nodetype.primitive_type.local_name.lower()
+                call_method = getattr(self.xmldatafacet, datatype)
+                return str(call_method(nodetype))
+        return ""
