@@ -3,8 +3,9 @@
 #  This software is distributed under the terms of the MIT License.
 #  See the file 'LICENSE' in the root directory of the present distribution,
 #  or http://opensource.org/licenses/MIT.
-import xmlschema
 import xml.etree.ElementTree as ET
+
+import xmlschema
 
 from xsd2xml.xmldatafacet import XmlDefaultDataFacet
 
@@ -58,11 +59,11 @@ class XmlGenerator:
             if xsdnode.type.is_simple():
                 xmlnode.text = self._get_random_content(xsdnode.type)
             else:
-                xmlnode.text = self._get_random_content(xsdnode.type.content_type)
+                xmlnode.text = self._get_random_content(xsdnode.type.content)
 
         # complex types
         else:
-            content_type = xsdnode.type.content_type
+            content_type = xsdnode.type.content
             # choice
             if content_type.model == "choice":
                 selected_node = content_type._group[0]
