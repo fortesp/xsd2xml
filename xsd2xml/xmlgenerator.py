@@ -95,12 +95,25 @@ class XmlGenerator:
             if hasattr(xsdnode.type, "attributes"):
                 attributes = xsdnode.type.attributes
         for attr, attr_obj in _attributes.items():
+            if attr_obj.fixed is not None:
+                xmlnode.attrib[attr] = attr_obj.fixed
+                continue
+
             xmlnode.attrib[attr] = self._get_random_content(attr_obj.type)
 
     def _get_random_content(self, nodetype) -> str:
         if self.xmldatafacet:
-            if hasattr(nodetype, 'primitive_type'):
-                datatype = nodetype.primitive_type.local_name.lower()
+            datatype = nodetype.local_name.lower()
+            try:
                 call_method = getattr(self.xmldatafacet, datatype)
                 return str(call_method(nodetype))
+            except AttributeError:
+                try:
+                    datatype = nodetype.primitive_type.local_name.lower()
+                    call_method = getattr(self.xmldatafacet, datatype)
+                    return str(call_method(nodetype))
+                except AttributeError:
+                    # No further strategy
+                    pass
+
         return ""

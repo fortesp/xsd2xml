@@ -79,20 +79,17 @@ class XmlDefaultDataFacet(DataFacet):
             # https://www.regular-expressions.info/shorthand.html#xml
             # https://stackoverflow.com/a/12795409
             pattern = regexps[0]
-            pattern = pattern.replace(r'\c', r'[-._:A-Za-z0-9]')
-            pattern = pattern.replace(r'\C', r'[^-._:A-Za-z0-9]')
-            pattern = pattern.replace(r'\i', r'[_:A-Za-z]')
-            pattern = pattern.replace(r'\I', r'[^_:A-Za-z]')
-            try:
-                return rstr.xeger(pattern)
-            except re.error:
-                # Inside a character class?
-                pattern = regexps[0]
-                pattern = pattern.replace(r'\c', r'\-._:A-Za-z0-9')
-                # Negation for \C ?
-                pattern = pattern.replace(r'\i', r'_:A-Za-z')
-                # Negation for \I ?
-                return rstr.xeger(pattern)
+            if regexps[0] == r'[\i-[:]][\c-[:]]*':
+                # Translating this one is particularly sticky.
+                pattern = r'[_A-Za-z][-._A-Za-z0-9]*'
+            else:
+                # ... carry on...
+                pattern = pattern.replace(r'\c', r'[-._:A-Za-z0-9]')
+                pattern = pattern.replace(r'\C', r'[^-._:A-Za-z0-9]')
+                pattern = pattern.replace(r'\i', r'[_:A-Za-z]')
+                pattern = pattern.replace(r'\I', r'[^_:A-Za-z]')
+                
+            return rstr.xeger(pattern)
 
         return get_mixed_string(10)
 
