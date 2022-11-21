@@ -3,8 +3,9 @@
 #  This software is distributed under the terms of the MIT License.
 #  See the file 'LICENSE' in the root directory of the present distribution,
 #  or http://opensource.org/licenses/MIT.
-import xmlschema
 import xml.etree.ElementTree as ET
+
+import xmlschema
 
 from xsd2xml.xmldatafacet import XmlDefaultDataFacet
 
@@ -58,11 +59,11 @@ class XmlGenerator:
             if xsdnode.type.is_simple():
                 xmlnode.text = self._get_random_content(xsdnode.type)
             else:
-                xmlnode.text = self._get_random_content(xsdnode.type.content_type)
+                xmlnode.text = self._get_random_content(xsdnode.type.content)
 
         # complex types
         else:
-            content_type = xsdnode.type.content_type
+            content_type = xsdnode.type.content
             # choice
             if content_type.model == "choice":
                 selected_node = content_type._group[0]
@@ -94,12 +95,25 @@ class XmlGenerator:
             if hasattr(xsdnode.type, "attributes"):
                 attributes = xsdnode.type.attributes
         for attr, attr_obj in _attributes.items():
+            if attr_obj.fixed is not None:
+                xmlnode.attrib[attr] = attr_obj.fixed
+                continue
+
             xmlnode.attrib[attr] = self._get_random_content(attr_obj.type)
 
     def _get_random_content(self, nodetype) -> str:
         if self.xmldatafacet:
-            datatype = nodetype.primitive_type.local_name.lower()
-            call_method = getattr(self.xmldatafacet, datatype)
-            return str(call_method(nodetype))
-        else:
-            return ""
+            datatype = nodetype.local_name.lower()
+            try:
+                call_method = getattr(self.xmldatafacet, datatype)
+                return str(call_method(nodetype))
+            except AttributeError:
+                try:
+                    datatype = nodetype.primitive_type.local_name.lower()
+                    call_method = getattr(self.xmldatafacet, datatype)
+                    return str(call_method(nodetype))
+                except AttributeError:
+                    # No further strategy
+                    pass
+
+        return ""

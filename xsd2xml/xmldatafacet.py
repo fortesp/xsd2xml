@@ -5,10 +5,12 @@
 #  or http://opensource.org/licenses/MIT.
 import datetime
 import random
+import re
+from abc import ABC, abstractmethod
+
 import rstr
 
-from xsd2xml.helper import get_mixed_string, get_digits
-from abc import ABC, abstractmethod
+from xsd2xml.helper import get_digits, get_mixed_string
 
 
 class DataFacet(ABC):
@@ -73,7 +75,21 @@ class XmlDefaultDataFacet(DataFacet):
 
         if "pattern" in _facets_str:
             regexps = list(nodetype.facets.values())[0].regexps
-            return rstr.xeger(regexps[0])
+            # Translate
+            # https://www.regular-expressions.info/shorthand.html#xml
+            # https://stackoverflow.com/a/12795409
+            pattern = regexps[0]
+            if regexps[0] == r'[\i-[:]][\c-[:]]*':
+                # Translating this one is particularly sticky.
+                pattern = r'[_A-Za-z][-._A-Za-z0-9]*'
+            else:
+                # ... carry on...
+                pattern = pattern.replace(r'\c', r'[-._:A-Za-z0-9]')
+                pattern = pattern.replace(r'\C', r'[^-._:A-Za-z0-9]')
+                pattern = pattern.replace(r'\i', r'[_:A-Za-z]')
+                pattern = pattern.replace(r'\I', r'[^_:A-Za-z]')
+                
+            return rstr.xeger(pattern)
 
         return get_mixed_string(10)
 
