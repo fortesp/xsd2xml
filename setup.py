@@ -11,8 +11,8 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="xsd2xml",
     version="0.0.1",
-    author="Pedro Fortes",
-    author_email="pedro.daniel.g@gmail.com",
+    author="Monkey",
+    author_email="somemail@emails.com",
     description="XSD to XML converter",
     long_description=long_description,
     long_description_content_type="text/markdown",
